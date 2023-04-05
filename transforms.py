@@ -1,14 +1,17 @@
+from typing import Optional
+
 import torch
 import torchaudio
 from torch import Tensor
 
+
 class ConvReverb(torch.nn.Module):
     """
-    Apply convolutional reverberation to a waveform using FFT 
+    Apply convolutional reverberation to a waveform using FFT
     and a Room Impulse Response (RIR) tensor.
     """
 
-    def __init__(self, rir: Tensor = None) -> None:
+    def __init__(self, rir: Optional[Tensor] = None) -> None:
         super().__init__()
 
         self.rir = rir
@@ -23,7 +26,7 @@ class ConvReverb(torch.nn.Module):
             Tensor: The reverberated audio of shape `(..., time)`.
         """
         return torchaudio.functional.fftconvolve(waveform, self.rir)
-    
+
     def download_rir_sample(self) -> Tensor:
         rir_path = torchaudio.utils.download_asset(
             "tutorial-assets/Lab41-SRI-VOiCES-rm1-impulse-mc01-stu-clo-8000hz.wav"
