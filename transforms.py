@@ -2,7 +2,21 @@ from typing import Optional
 
 import torch
 import torchaudio
+import torchaudio.functional as F
 from torch import Tensor
+
+
+def get_processed_rir(rir: Optional[Tensor] = None) -> Tensor:
+    if rir is None:
+        path = torchaudio.utils.download_asset(
+            "tutorial-assets/Lab41-SRI-VOiCES-rm1-impulse-mc01-stu-clo-8000hz.wav"
+        )
+        rir, sample_rate = torchaudio.load(path)
+
+        rir = rir[:, int(sample_rate * 1.01): int(sample_rate * 1.3)]
+        rir = rir / torch.norm(rir, p=2)
+        rir = torch.flip(rir, [1])
+    return rir
 
 
 class ConvolutionalReverb(torch.nn.Module):
@@ -22,12 +36,16 @@ class ConvolutionalReverb(torch.nn.Module):
         >>> augmented = transform(waveform)
     """
 
-    def __init__(self, rir: Optional[Tensor] = None) -> None:
+    def __init__(
+            self,
+            rir: Optional[Tensor] = None,
+            process_rir: bool = True
+    ) -> None:
         super().__init__()
 
         self.rir = rir
-        if self.rir is None:
-            self.rir = self.download_rir_sample()
+        if rir is None or process_rir:
+            self.rir = get_processed_rir(rir)
 
     def forward(self, waveform: Tensor) -> Tensor:
         """
@@ -36,14 +54,4 @@ class ConvolutionalReverb(torch.nn.Module):
         Returns:
             Tensor: The reverberated audio of shape `(..., time)`.
         """
-        return torchaudio.functional.fftconvolve(waveform, self.rir)
-
-    def download_rir_sample(self) -> Tensor:
-        path = torchaudio.utils.download_asset(
-            "tutorial-assets/Lab41-SRI-VOiCES-rm1-impulse-mc01-stu-clo-8000hz.wav"
-        )
-        rir_raw, sample_rate = torchaudio.load(path)
-        rir = rir_raw[:, int(sample_rate * 1.01) : int(sample_rate * 1.3)]
-        rir = rir / torch.norm(rir, p=2)
-        rir = torch.flip(rir, [1])
-        return rir
+        return F.fftconvolve(waveform, self.rir)
