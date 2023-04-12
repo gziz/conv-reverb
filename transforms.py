@@ -5,10 +5,21 @@ import torchaudio
 from torch import Tensor
 
 
-class ConvReverb(torch.nn.Module):
-    """
-    Apply convolutional reverberation to a waveform using FFT
+class ConvolutionalReverb(torch.nn.Module):
+    r"""Apply convolutional reverberation to a waveform using FFT
     and a Room Impulse Response (RIR) tensor.
+
+    .. devices:: CPU CUDA
+
+    .. properties:: Autograd TorchScript
+
+    Args:
+        rir (Tensor, None): RIR sample file, with the impulse extracted.
+
+    Example
+        >>> waveform, sample_rate = torchaudio.load("speech.wav")
+        >>> transform = torchaudio.transforms.ConvolutionalReverb()
+        >>> augmented = transform(waveform)
     """
 
     def __init__(self, rir: Optional[Tensor] = None) -> None:
@@ -28,10 +39,10 @@ class ConvReverb(torch.nn.Module):
         return torchaudio.functional.fftconvolve(waveform, self.rir)
 
     def download_rir_sample(self) -> Tensor:
-        rir_path = torchaudio.utils.download_asset(
+        path = torchaudio.utils.download_asset(
             "tutorial-assets/Lab41-SRI-VOiCES-rm1-impulse-mc01-stu-clo-8000hz.wav"
         )
-        rir_raw, sample_rate = torchaudio.load(rir_path)
+        rir_raw, sample_rate = torchaudio.load(path)
         rir = rir_raw[:, int(sample_rate * 1.01) : int(sample_rate * 1.3)]
         rir = rir / torch.norm(rir, p=2)
         rir = torch.flip(rir, [1])
