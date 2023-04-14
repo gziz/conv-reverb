@@ -2,8 +2,6 @@ from typing import Optional
 
 import torch
 import torchaudio
-import torchaudio.functional as F
-import torchaudio.transforms as T
 from torch import Tensor
 
 
@@ -11,9 +9,10 @@ def _get_rir_boundaries(waveform: Tensor, sample_rate: int) -> Tensor:
     """
     Get the impulse start and end boundaries from a RIR waveform
     """
-    spec_transform = T.Spectrogram()
+    from torchaudio.transforms import Spectrogram, AmplitudeToDB
+    spec_transform = Spectrogram()
     bins_ratio = spec_transform.hop_length
-    s2db = T.AmplitudeToDB()
+    s2db = AmplitudeToDB()
 
     freq = s2db(spec_transform(waveform))
     freq_sum = freq.sum(axis=1).flatten()
@@ -57,44 +56,3 @@ def process_rir(rir: Optional[Tensor] = None, sample_rate: int = None) -> Tensor
     rir = rir / torch.norm(rir, p=2)
     rir = torch.flip(rir, [1])
     return rir
-
-
-class ConvolutionalReverb(torch.nn.Module):
-    r"""Apply convolutional reverberation to a waveform using FFT
-    and a Room Impulse Response (RIR) tensor.
-
-    .. devices:: CPU CUDA
-
-    .. properties:: Autograd TorchScript
-
-    Args:
-        rir (Tensor, None): Room Impulse Response waveform.
-        apply_processing_rir (bool, optional): Whether the RIR waveform should be
-            processed (Default: ``True``).
-
-    Example
-        >>> waveform, sample_rate = torchaudio.load("speech.wav")
-        >>> transform = torchaudio.transforms.ConvolutionalReverb()
-        >>> augmented = transform(waveform)
-    """
-
-    def __init__(
-            self,
-            rir: Optional[Tensor] = None,
-            sample_rate: int = None,
-            apply_processing_rir: bool = True
-    ) -> None:
-        super().__init__()
-
-        self.rir = rir
-        if rir is None or apply_processing_rir:
-            self.rir = process_rir(rir, sample_rate)
-
-    def forward(self, waveform: Tensor) -> Tensor:
-        """
-        Args:
-            waveform (Tensor): Tensor of audio of shape `(..., time)`.
-        Returns:
-            Tensor: The reverberated audio of shape `(..., time)`.
-        """
-        return F.fftconvolve(waveform, self.rir)
